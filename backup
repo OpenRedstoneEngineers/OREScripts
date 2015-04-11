@@ -1,0 +1,28 @@
+#!/bin/sh
+
+if [ "$2" = "" ]; then
+	echo "$0 <server> <host>"
+	exit 1
+fi
+
+checkfile()
+{
+	if [ ! -f "$1" ]; then
+		echo "Missing file: $1"
+		exit 1
+	fi
+}
+
+checkfile "$1/backup-excludes"
+checkfile "$1/backup-mysql-databases"
+checkfile "$1/backup-mysql-password"
+
+DATE=$(date "+%Y.%m.%d")
+BACKUP_DIR="backups/$1/$DATE"
+
+rm -r "$BACKUP_DIR"
+mkdir "$BACKUP_DIR"
+tar -cvzf "$BACKUP_DIR/server.tar.gz" --exclude-from="$1/backup-excludes" $1/
+mysqldump --password="$(cat $1/backup-mysql-password)" --databases $(cat $1/backup-mysql-databases) > "$BACKUP_DIR/sqldump.sql"
+gzip "$BACKUP_DIR/sqldump.sql"
+scp -r "$BACKUP_DIR" "$2:$BACKUP_DIR"
